@@ -1,0 +1,347 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* =====================================================
+   DELOITTE-INSPIRED · MAHARASHTRA SOUL
+   Pure white · Bold type · Transparent ghost buttons
+   Full-width · High contrast · Clean grid
+   ===================================================== */
+
+:root {
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+
+  --background:        0 0% 100%;
+  --foreground:        0 0% 6%;
+  --muted:             0 0% 96%;
+  --muted-foreground:  0 0% 44%;
+  --border:            0 0% 90%;
+  --input:             0 0% 94%;
+  --ring:              25 95% 48%;
+
+  --card:              0 0% 100%;
+  --card-foreground:   0 0% 6%;
+  --popover:           0 0% 100%;
+  --popover-foreground: 0 0% 6%;
+
+  /* Kesari as the ONE accent — Maharashtra identity */
+  --primary:           25 95% 48%;
+  --primary-foreground: 0 0% 100%;
+
+  --secondary:         0 0% 96%;
+  --secondary-foreground: 0 0% 6%;
+
+  --accent:            25 95% 48%;
+  --accent-foreground: 0 0% 100%;
+
+  --destructive:       0 84% 50%;
+  --destructive-foreground: 0 0% 100%;
+
+  /* Maharashtra palette */
+  --kesari:            25 95% 48%;
+  --kesari-hover:      25 95% 40%;
+  --kesari-light:      25 100% 97%;
+  --kesari-border:     25 95% 85%;
+
+  /* Tricolour — ONLY for loader */
+  --tri-saffron: 29 92% 56%;
+  --tri-white:   0 0% 100%;
+  --tri-green:   145 68% 34%;
+  --tri-navy:    218 74% 28%;
+
+  --radius: 0px;   /* Deloitte uses sharp corners */
+  --shadow-sm: 0 1px 4px rgba(0,0,0,0.06);
+  --shadow-md: 0 4px 20px rgba(0,0,0,0.08);
+  --shadow-lg: 0 16px 48px rgba(0,0,0,0.10);
+}
+
+.dark {
+  --background:        0 0% 5%;
+  --foreground:        0 0% 96%;
+  --muted:             0 0% 10%;
+  --muted-foreground:  0 0% 55%;
+  --border:            0 0% 14%;
+  --input:             0 0% 12%;
+  --ring:              25 95% 55%;
+
+  --card:              0 0% 8%;
+  --card-foreground:   0 0% 96%;
+  --popover:           0 0% 8%;
+  --popover-foreground: 0 0% 96%;
+
+  --primary:           25 95% 55%;
+  --primary-foreground: 0 0% 5%;
+
+  --secondary:         0 0% 12%;
+  --secondary-foreground: 0 0% 96%;
+
+  --accent:            25 95% 55%;
+  --accent-foreground: 0 0% 5%;
+
+  --kesari:            25 95% 55%;
+  --kesari-hover:      25 95% 62%;
+  --kesari-light:      25 60% 12%;
+  --kesari-border:     25 60% 25%;
+}
+
+/* ── Tricolour loader (ONLY place flag colours appear) ── */
+@keyframes spin-ring {
+  to { transform: rotate(360deg); }
+}
+@keyframes bounce-dots {
+  0%, 80%, 100% { transform: scale(0); opacity: 0; }
+  40%           { transform: scale(1); opacity: 1; }
+}
+.tricolour-ring {
+  width: 56px; height: 56px;
+  border: 3px solid transparent;
+  border-top-color:    hsl(var(--tri-saffron));
+  border-right-color:  rgba(255,255,255,0.6);
+  border-bottom-color: hsl(var(--tri-green));
+  border-left-color:   transparent;
+  border-radius: 9999px;
+  animation: spin-ring 0.9s linear infinite;
+}
+.tricolour-loader { display: flex; gap: 8px; align-items: center; }
+.dot { width: 8px; height: 8px; border-radius: 9999px; }
+.dot-saffron { background: hsl(var(--tri-saffron)); animation: bounce-dots 1.2s ease-in-out infinite; animation-delay: -0.32s; }
+.dot-white   { background: white; border: 1px solid #ccc; animation: bounce-dots 1.2s ease-in-out infinite; animation-delay: -0.16s; }
+.dot-green   { background: hsl(var(--tri-green)); animation: bounce-dots 1.2s ease-in-out infinite; }
+
+/* ── Base ── */
+@layer base {
+  html {
+    color-scheme: light;
+    scroll-behavior: smooth;
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+  .dark { color-scheme: dark; }
+
+  *, *::before, *::after {
+    @apply border-border;
+    transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: var(--font-sans);
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body::before { display: none; }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-sans);
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    color: hsl(var(--foreground));
+  }
+
+  /* Full-width images */
+  img { max-width: 100%; height: auto; display: block; }
+
+  /* Focus visible */
+  :focus-visible {
+    outline: 2px solid hsl(var(--kesari));
+    outline-offset: 2px;
+  }
+}
+
+/* ── Utilities ── */
+@layer utilities {
+
+  /* App background — pure, no noise */
+  .bg-app {
+    background-color: hsl(var(--background));
+  }
+
+  /* ── DELOITTE-STYLE BUTTONS ──
+     Transparent with visible border, bold text, no radius
+     Primary action: filled kesari
+     Secondary: transparent + border
+  */
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 28px;
+    background: hsl(var(--kesari));
+    color: white;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    border: 2px solid hsl(var(--kesari));
+    border-radius: 0;
+    cursor: pointer;
+    transition: background 0.2s ease, transform 0.15s ease;
+    white-space: nowrap;
+  }
+  .btn-primary:hover {
+    background: hsl(var(--kesari-hover));
+    border-color: hsl(var(--kesari-hover));
+    transform: translateY(-1px);
+  }
+
+  .btn-ghost {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 28px;
+    background: transparent;
+    color: hsl(var(--foreground));
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    border: 2px solid hsl(var(--foreground));
+    border-radius: 0;
+    cursor: pointer;
+    transition: background 0.2s ease, color 0.2s ease, transform 0.15s ease;
+    white-space: nowrap;
+  }
+  .btn-ghost:hover {
+    background: hsl(var(--foreground));
+    color: hsl(var(--background));
+    transform: translateY(-1px);
+  }
+
+  .btn-ghost-kesari {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 28px;
+    background: transparent;
+    color: hsl(var(--kesari));
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    border: 2px solid hsl(var(--kesari));
+    border-radius: 0;
+    cursor: pointer;
+    transition: background 0.2s ease, color 0.2s ease, transform 0.15s ease;
+    white-space: nowrap;
+  }
+  .btn-ghost-kesari:hover {
+    background: hsl(var(--kesari));
+    color: white;
+    transform: translateY(-1px);
+  }
+
+  /* ── SECTION DIVIDER ── */
+  .section-divider {
+    width: 48px;
+    height: 3px;
+    background: hsl(var(--kesari));
+    margin-bottom: 20px;
+  }
+
+  /* ── CARD ── */
+  .card-deloitte {
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+  }
+  .card-deloitte:hover {
+    border-color: hsl(var(--kesari));
+    box-shadow: var(--shadow-md);
+    transform: translateY(-3px);
+  }
+
+  /* ── WARLI DOTS — subtle Maharashtra texture ── */
+  .warli-bg {
+    background-image: radial-gradient(circle, hsl(var(--kesari) / 0.08) 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+
+  /* ── KESARI LINE — section accent ── */
+  .kesari-line {
+    position: relative;
+    padding-bottom: 16px;
+  }
+  .kesari-line::after {
+    content: "";
+    position: absolute;
+    bottom: 0; left: 0;
+    width: 40px; height: 3px;
+    background: hsl(var(--kesari));
+  }
+
+  /* ── ANIMATIONS ── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  @keyframes slideInLeft {
+    from { opacity: 0; transform: translateX(-20px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+  @keyframes shimmer {
+    0%   { background-position: -400px 0; }
+    100% { background-position: 400px 0; }
+  }
+  @keyframes marquee {
+    from { transform: translateX(0); }
+    to   { transform: translateX(-50%); }
+  }
+
+  .animate-fadeUp     { animation: fadeUp 0.55s cubic-bezier(0.16, 1, 0.3, 1) both; }
+  .animate-fadeIn     { animation: fadeIn 0.4s ease both; }
+  .animate-slideInLeft { animation: slideInLeft 0.45s ease both; }
+  .animate-marquee    { animation: marquee 20s linear infinite; }
+
+  .shimmer {
+    background: linear-gradient(90deg, hsl(var(--muted)) 0%, hsl(var(--card)) 40%, hsl(var(--muted)) 80%);
+    background-size: 400px 100%;
+    animation: shimmer 1.4s ease-in-out infinite;
+  }
+
+  /* Stagger */
+  .delay-75  { animation-delay: 0.075s; }
+  .delay-150 { animation-delay: 0.15s; }
+  .delay-225 { animation-delay: 0.225s; }
+  .delay-300 { animation-delay: 0.3s; }
+  .delay-400 { animation-delay: 0.4s; }
+
+  /* Full bleed helper */
+  .full-bleed {
+    width: 100vw;
+    margin-left: calc(-50vw + 50%);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .animate-fadeUp, .animate-fadeIn, .animate-slideInLeft,
+    .animate-marquee, .shimmer { animation: none !important; }
+  }
+}
+
+/* ── Rich text ── */
+.ProseMirror { @apply outline-none leading-relaxed; }
+.ProseMirror p  { @apply text-base leading-relaxed text-foreground/85 mb-3; }
+.ProseMirror h2 { @apply text-2xl font-bold mt-8 mb-3; }
+.ProseMirror h3 { @apply text-xl font-semibold mt-6 mb-2; }
+.ProseMirror ul { @apply list-disc pl-6 my-3 space-y-1; }
+.ProseMirror ol { @apply list-decimal pl-6 my-3 space-y-1; }
+.ProseMirror a  { @apply underline underline-offset-4; color: hsl(var(--kesari)); }
+.ProseMirror blockquote {
+  @apply border-l-4 pl-5 my-5 italic text-muted-foreground;
+  border-color: hsl(var(--kesari));
+}
+.ProseMirror strong { @apply font-semibold; }
+
+/* ── Print / PDF export ── */
+@media print {
+  body::before { display: none; }
+  header, nav, aside, .print\\:hidden { display: none !important; }
+  body { background: white !important; background-image: none !important; }
+  .bg-card { background: white !important; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
