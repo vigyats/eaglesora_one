@@ -45,8 +45,15 @@ export function TranslationTabs({
     try {
       const results = await translateContent(source, "en", ["hi", "mr"]);
       onTranslated(results);
-    } catch {
-      setError("Translation failed. Check your API key or try again.");
+    } catch (err) {
+      const msg = (err as Error).message || "";
+      setError(
+        msg.includes("Session expired")
+          ? msg
+          : msg.includes("authentication failed")
+          ? "Translation service authentication failed. Contact admin."
+          : "Auto-translation failed. Please try again or fill in manually."
+      );
     } finally {
       setTranslating(false);
     }

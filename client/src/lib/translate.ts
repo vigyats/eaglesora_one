@@ -1,16 +1,18 @@
 type Lang = "en" | "hi" | "mr";
 
-// Microsoft Translator lang codes
 const MS_CODES: Record<Lang, string> = { en: "en", hi: "hi", mr: "mr" };
 
-async function callTranslate(texts: string[], toLang: Lang): Promise<string[]> {
+async function callTranslate(texts: string[], fromLang: Lang, toLang: Lang): Promise<string[]> {
   if (texts.every((t) => !t.trim())) return texts;
   const res = await fetch("/api/translate", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ texts, toLang: MS_CODES[toLang] }),
+    // Pass fromLang so Azure uses explicit source — prevents Marathi/Hindi
+    // text with English words being misidentified as English
+    body: JSON.stringify({ texts, fromLang: MS_CODES[fromLang], toLang: MS_CODES[toLang] }),
   });
   if (!res.ok) {
+    if (res.status === 401) throw new Error("Session expired — please log in again.");
     const err = await res.json().catch(() => ({ message: res.statusText }));
     throw new Error(err.message || `HTTP ${res.status}`);
   }
@@ -61,11 +63,13 @@ export async function translateContent(
       source.requirements || "",
     ];
 
-    const [title, summary, content, location, introduction, requirements] = await callTranslate(texts, toLang);
+    const [title, summary, content, location, introduction, requirements] =
+      await callTranslate(texts, fromLang, toLang);
+
     result[toLang] = {
       title,
       summary,
-      contentHtml: wrapHtml(content),
+      contentHtml: content ? wrapHtml(content) : "",
       location: source.location ? location : undefined,
       introduction: source.introduction ? introduction : undefined,
       requirements: source.requirements ? requirements : undefined,

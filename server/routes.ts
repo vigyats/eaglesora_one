@@ -764,7 +764,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // Auto-translate endpoint (server-side — keeps API key secret)
   app.post("/api/translate", isAuthenticated, async (req: any, res) => {
     try {
-      const { texts, toLang } = req.body as { texts: string[]; toLang: string };
+      const { texts, toLang, fromLang } = req.body as { texts: string[]; toLang: string; fromLang?: string };
       if (!Array.isArray(texts) || !toLang) {
         return res.status(400).json({ message: "texts[] and toLang are required" });
       }
@@ -775,9 +775,12 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         return res.status(503).json({ message: "Translator not configured" });
       }
 
+      // Use explicit fromLang when provided — prevents auto-detect misidentifying
+      // Marathi/Hindi text that contains English words
+      const fromParam = fromLang ? `&from=${fromLang}` : "";
       const body = texts.map((t) => ({ Text: t }));
       const response = await fetch(
-        `https://api.cognitive.microsofttranslator.com/translate?api-version=3.0&to=${toLang}`,
+        `https://api.cognitive.microsofttranslator.com/translate?api-version=3.0&to=${toLang}${fromParam}`,
         {
           method: "POST",
           headers: {
@@ -790,8 +793,16 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       );
 
       if (!response.ok) {
-        const err = await response.text();
-        console.error("Translator API error:", err);
+        const errText = await response.text();
+        console.error("Translator API error:", errText);
+        // Parse Azure error for better client messages
+        try {
+          const parsed = JSON.parse(errText);
+          const code = parsed?.error?.code;
+          if (code === 401000 || code === "401000") {
+            return res.status(502).json({ message: "Translation service authentication failed" });
+          }
+        } catch {}
         return res.status(502).json({ message: "Translation failed" });
       }
 
