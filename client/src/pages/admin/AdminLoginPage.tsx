@@ -48,7 +48,7 @@ export default function AdminLoginPage() {
                 value={formData.identifier}
                 onChange={(e) => setFormData({ ...formData, identifier: e.target.value })}
                 className="w-full px-4 py-3 border-2 border-border bg-background text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:border-[hsl(var(--kesari))] transition-colors"
-                placeholder="vigyat or vigyat@blackai.in"
+                placeholder="Username or email"
                 disabled={isLoading}
               />
             </div>

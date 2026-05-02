@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -303,6 +303,15 @@ export function TranslationReviewDialog({ open, onClose, translations, mode, ...
   const [saving, setSaving] = useState<Lang | "all" | null>(null);
   const [savedSet, setSavedSet] = useState<Set<Lang>>(new Set());
   const [dirty, setDirty] = useState<Set<Lang>>(new Set());
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Scroll page to top when dialog opens so the fixed overlay isn't hidden behind scroll position
+  useEffect(() => {
+    if (open) {
+      window.scrollTo({ top: 0 });
+      scrollRef.current?.scrollTo({ top: 0 });
+    }
+  }, [open]);
 
   const [fields, setFields] = useState<Record<Lang, TranslationReviewFields>>(() => {
     const d: Record<Lang, TranslationReviewFields> = {
@@ -433,7 +442,7 @@ export function TranslationReviewDialog({ open, onClose, translations, mode, ...
       </div>
 
       {/* Body — row-wise layout on desktop, tabs on mobile */}
-      <div className="flex-1 overflow-y-auto">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto">
         {/* Mobile: tab-based single column */}
         <div className="lg:hidden">
           <Tabs defaultValue="en" className="flex flex-col">
