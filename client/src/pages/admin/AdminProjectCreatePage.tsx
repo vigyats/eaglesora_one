@@ -108,10 +108,21 @@ export default function AdminProjectCreatePage() {
     if (!validate()) return;
     setTranslating(true);
     try {
-      const results = await translateContent(
-        { title: title.trim(), summary: summary.trim(), contentHtml },
-        "en", ["hi", "mr"]
-      );
+      let results: Record<string, any>;
+      try {
+        results = await translateContent(
+          { title: title.trim(), summary: summary.trim(), contentHtml },
+          "en", ["hi", "mr"]
+        );
+      } catch (transErr) {
+        // Translation failed — still allow review with English pre-filled
+        toast({ title: "Auto-translate failed", description: (transErr as Error).message + " — you can fill Hindi & Marathi manually.", variant: "destructive" });
+        results = {
+          en: { title: title.trim(), summary: summary.trim(), contentHtml },
+          hi: { title: "", summary: "", contentHtml: "" },
+          mr: { title: "", summary: "", contentHtml: "" },
+        };
+      }
       setPendingTranslations((["en", "hi", "mr"] as const).map((l) => ({
         language: l,
         status: "published" as const,
@@ -120,9 +131,6 @@ export default function AdminProjectCreatePage() {
         contentHtml: results[l]?.contentHtml ?? "",
       })));
       setStep(2);
-      setReviewOpen(true);
-    } catch {
-      toast({ title: "Translation failed", description: "Could not auto-translate. Check API key.", variant: "destructive" });
     } finally {
       setTranslating(false);
     }

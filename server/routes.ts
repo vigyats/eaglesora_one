@@ -38,6 +38,40 @@ async function requireAdmin(req: any): Promise<{ adminId: number; role: "super_a
   return { adminId: admin.id, role: admin.role };
 }
 
+// Module-level Azure Translator helper — must be outside registerRoutes so it
+// is defined before the route handlers that reference it close over it.
+async function callAzureTranslator(
+  texts: string[],
+  toLangs: string[],
+  fromLang?: string
+): Promise<Array<{ translations: Array<{ text: string; to: string }> }>> {
+  const key    = process.env.MICROSOFT_TRANSLATOR_KEY;
+  const region = process.env.MICROSOFT_TRANSLATOR_REGION || "global";
+  if (!key) throw new Error("TRANSLATOR_NOT_CONFIGURED");
+
+  const toParams  = toLangs.map((l) => `to=${l}`).join("&");
+  const fromParam = fromLang ? `&from=${fromLang}` : "";
+  const url = `https://api.cognitive.microsofttranslator.com/translate?api-version=3.0&${toParams}${fromParam}`;
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Ocp-Apim-Subscription-Key": key,
+      "Ocp-Apim-Subscription-Region": region,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(texts.map((t) => ({ Text: t }))),
+  });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    console.error("Azure Translator error:", errText);
+    throw new Error(`AZURE_ERROR:${response.status}:${errText}`);
+  }
+
+  return response.json();
+}
+
 export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
   //await setupAuth(app);
   //registerAuthRoutes(app);
@@ -761,57 +795,51 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  // Auto-translate endpoint (server-side — keeps API key secret)
+  // Single-target translate (kept for compatibility)
   app.post("/api/translate", isAuthenticated, async (req: any, res) => {
     try {
       const { texts, toLang, fromLang } = req.body as { texts: string[]; toLang: string; fromLang?: string };
       if (!Array.isArray(texts) || !toLang) {
         return res.status(400).json({ message: "texts[] and toLang are required" });
       }
-
-      const key = process.env.MICROSOFT_TRANSLATOR_KEY;
-      const region = process.env.MICROSOFT_TRANSLATOR_REGION || "global";
-      if (!key) {
-        return res.status(503).json({ message: "Translator not configured" });
-      }
-
-      // Use explicit fromLang when provided — prevents auto-detect misidentifying
-      // Marathi/Hindi text that contains English words
-      const fromParam = fromLang ? `&from=${fromLang}` : "";
-      const body = texts.map((t) => ({ Text: t }));
-      const response = await fetch(
-        `https://api.cognitive.microsofttranslator.com/translate?api-version=3.0&to=${toLang}${fromParam}`,
-        {
-          method: "POST",
-          headers: {
-            "Ocp-Apim-Subscription-Key": key,
-            "Ocp-Apim-Subscription-Region": region,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(body),
-        }
-      );
-
-      if (!response.ok) {
-        const errText = await response.text();
-        console.error("Translator API error:", errText);
-        // Parse Azure error for better client messages
-        try {
-          const parsed = JSON.parse(errText);
-          const code = parsed?.error?.code;
-          if (code === 401000 || code === "401000") {
-            return res.status(502).json({ message: "Translation service authentication failed" });
-          }
-        } catch {}
-        return res.status(502).json({ message: "Translation failed" });
-      }
-
-      const data = (await response.json()) as Array<{ translations: Array<{ text: string }> }>;
+      const data = await callAzureTranslator(texts, [toLang], fromLang);
       const translated = data.map((item) => item.translations[0]?.text ?? "");
       return res.json({ translated });
     } catch (err) {
+      const msg = String(err);
+      if (msg.includes("TRANSLATOR_NOT_CONFIGURED")) return res.status(503).json({ message: "Translator not configured" });
       console.error("Translate error:", err);
-      return res.status(500).json({ message: "Internal error" });
+      return res.status(502).json({ message: "Translation failed" });
+    }
+  });
+
+  // Batch translate — multiple target languages in ONE Azure API call
+  // Query params: ?from=en&to=hi&to=mr
+  app.post("/api/translate-batch", isAuthenticated, async (req: any, res) => {
+    try {
+      const { texts } = req.body as { texts: string[] };
+      const fromLang = req.query.from as string | undefined;
+      const toLangs  = (Array.isArray(req.query.to) ? req.query.to : [req.query.to]).filter(Boolean) as string[];
+
+      if (!Array.isArray(texts) || !toLangs.length) {
+        return res.status(400).json({ message: "texts[] and ?to= are required" });
+      }
+
+      const data = await callAzureTranslator(texts, toLangs, fromLang);
+
+      // Group results by target language: { hi: string[], mr: string[] }
+      const result: Record<string, string[]> = {};
+      for (const lang of toLangs) {
+        result[lang] = data.map(
+          (item) => item.translations.find((t) => t.to === lang)?.text ?? ""
+        );
+      }
+      return res.json(result);
+    } catch (err) {
+      const msg = String(err);
+      if (msg.includes("TRANSLATOR_NOT_CONFIGURED")) return res.status(503).json({ message: "Translator not configured" });
+      console.error("Translate batch error:", err);
+      return res.status(502).json({ message: "Translation failed" });
     }
   });
 
