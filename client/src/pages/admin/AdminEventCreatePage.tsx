@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { TranslationReviewPanel, type TranslationReviewFields } from "@/components/TranslationReviewDialog";
 import { translateContent } from "@/lib/translate";
-import { ArrowLeft, Loader2, Languages, AlertTriangle, FileText, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Loader2, Languages, AlertTriangle, FileText, CheckCircle2, Eye, X } from "lucide-react";
 
 const STEPS = [
   { id: 1, label: "Event Info", desc: "Details & content" },
@@ -75,6 +75,7 @@ export default function AdminEventCreatePage() {
   const create       = useCreateEvent();
 
   const [step, setStep] = useState<Step>(1);
+  const [showPreview, setShowPreview] = useState(false);
 
   // Details
   const [slug,                  setSlug]                  = useState("");
@@ -144,34 +145,38 @@ export default function AdminEventCreatePage() {
   }
 
   async function handleConfirmCreate(allTranslations: Record<"en" | "hi" | "mr", TranslationReviewFields>) {
-    try {
-      await create.mutateAsync({
-        slug: slug.trim(),
-        startDate: new Date(startDate).toISOString(),
-        endDate: endDate ? new Date(endDate).toISOString() : null,
-        registrationStartDate: registrationStartDate ? new Date(registrationStartDate).toISOString() : null,
-        registrationEndDate:   registrationEndDate   ? new Date(registrationEndDate).toISOString()   : null,
-        galleryImages: galleryImages.length ? galleryImages : undefined,
-        coverImagePath: cover,
-        flyerImagePath: flyer,
-        registrationFormUrl: registrationFormUrl.trim() || null,
-        eventPrice: eventPrice.trim() || null,
-        participationType: participationType.trim() || null,
-        translations: (["en", "hi", "mr"] as const).map((l) => ({
-          language: l,
-          status:       allTranslations[l].status ?? "published",
-          title:        allTranslations[l].title,
-          location:     allTranslations[l].location     ?? null,
-          summary:      allTranslations[l].summary      ?? null,
-          introduction: allTranslations[l].introduction ?? null,
-          requirements: allTranslations[l].requirements ?? null,
-          contentHtml:  allTranslations[l].contentHtml  || "<p></p>",
-        })),
-      });
-      toast({ title: "Event created successfully" });
+    const result = await create.mutateAsync({
+      slug: slug.trim(),
+      startDate: new Date(startDate).toISOString(),
+      endDate: endDate ? new Date(endDate).toISOString() : null,
+      registrationStartDate: registrationStartDate ? new Date(registrationStartDate).toISOString() : null,
+      registrationEndDate:   registrationEndDate   ? new Date(registrationEndDate).toISOString()   : null,
+      galleryImages: galleryImages.length ? galleryImages : undefined,
+      coverImagePath: cover,
+      flyerImagePath: flyer,
+      registrationFormUrl: registrationFormUrl.trim() || null,
+      eventPrice: eventPrice.trim() || null,
+      participationType: participationType.trim() || null,
+      translations: (["en", "hi", "mr"] as const).map((l) => ({
+        language: l,
+        status:       allTranslations[l].status ?? "published",
+        title:        allTranslations[l].title,
+        location:     allTranslations[l].location     ?? null,
+        summary:      allTranslations[l].summary      ?? null,
+        introduction: allTranslations[l].introduction ?? null,
+        requirements: allTranslations[l].requirements ?? null,
+        contentHtml:  allTranslations[l].contentHtml  || "<p></p>",
+      })),
+    });
+    const createdId = (result as any)?.event?.id;
+    toast({
+      title: "Event created successfully! ✅",
+      description: allTranslations["en"].title,
+    });
+    if (createdId) {
+      navigate(`/admin/events/${createdId}`);
+    } else {
       navigate("/admin/events");
-    } catch (e) {
-      throw e;
     }
   }
 
@@ -290,15 +295,25 @@ export default function AdminEventCreatePage() {
                   <FileText className="h-3.5 w-3.5" />
                   Fill all required fields, then translate
                 </div>
-                <button
-                  onClick={() => void handleTranslate()}
-                  disabled={translating}
-                  className="h-9 px-6 text-xs font-bold uppercase tracking-wider bg-[hsl(var(--kesari))] text-white hover:bg-[hsl(var(--kesari-hover))] transition-all disabled:opacity-50 flex items-center gap-2"
-                >
-                  {translating
-                    ? <><Loader2 className="h-3.5 w-3.5 animate-spin" />Translating…</>
-                    : <><Languages className="h-3.5 w-3.5" />Translate & Review</>}
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => { window.scrollTo({ top: 0 }); setShowPreview(true); }}
+                    disabled={!title.trim()}
+                    className="h-9 px-4 text-xs font-bold uppercase tracking-wider border border-border bg-transparent text-foreground hover:border-foreground transition-all disabled:opacity-40 flex items-center gap-2"
+                  >
+                    <Eye className="h-3.5 w-3.5" /> Preview
+                  </button>
+                  <button
+                    onClick={() => void handleTranslate()}
+                    disabled={translating}
+                    className="h-9 px-6 text-xs font-bold uppercase tracking-wider bg-[hsl(var(--kesari))] text-white hover:bg-[hsl(var(--kesari-hover))] transition-all disabled:opacity-50 flex items-center gap-2"
+                  >
+                    {translating
+                      ? <><Loader2 className="h-3.5 w-3.5 animate-spin" />Translating…</>
+                      : <><Languages className="h-3.5 w-3.5" />Translate & Review</>}
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -311,6 +326,58 @@ export default function AdminEventCreatePage() {
               onBack={() => setStep(1)}
               onConfirmCreate={handleConfirmCreate}
             />
+          )}
+
+          {/* ══ PREVIEW OVERLAY ══ */}
+          {showPreview && (
+            <div className="fixed inset-0 z-50 bg-background overflow-y-auto">
+              <div className="sticky top-0 z-10 bg-foreground text-background px-6 h-11 flex items-center justify-between gap-4">
+                <div className="flex items-center gap-2">
+                  <Eye className="h-4 w-4" />
+                  <span className="text-sm font-bold">Preview</span>
+                  <span className="text-xs opacity-50">— this is how the event will look publicly</span>
+                </div>
+                <button
+                  onClick={() => setShowPreview(false)}
+                  className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider opacity-70 hover:opacity-100 transition-opacity"
+                >
+                  <X className="h-4 w-4" /> Close Preview
+                </button>
+              </div>
+              <div className="px-6 sm:px-12 md:px-20 lg:px-32 py-14">
+                <p className="text-xs font-bold uppercase tracking-[0.22em] text-[hsl(var(--kesari))] mb-4">Event</p>
+                <h1 className="text-foreground mb-4" style={{ fontSize: "clamp(2rem,5vw,3.8rem)", fontWeight: 700, lineHeight: 1.06, letterSpacing: "-0.03em" }}>
+                  {title || "Untitled Event"}
+                </h1>
+                <div className="flex flex-wrap gap-4 mb-6">
+                  {startDate && (
+                    <span className="text-sm text-muted-foreground">📅 {new Date(startDate).toLocaleDateString("en-IN", { dateStyle: "long" })}</span>
+                  )}
+                  {location && <span className="text-sm text-muted-foreground">📍 {location}</span>}
+                  {eventPrice && <span className="text-sm font-semibold">{eventPrice === "Free" ? "Free Entry" : `₹${eventPrice}`}</span>}
+                </div>
+                {summary && <p className="text-muted-foreground mb-6" style={{ maxWidth: "58ch", lineHeight: 1.7 }}>{summary}</p>}
+                {(flyer || cover) && (
+                  <img src={flyer || cover!} alt="Flyer" className="w-full max-h-[420px] object-cover mb-10 border border-border" />
+                )}
+                {introduction && (
+                  <div className="mb-6 p-4 border border-border bg-muted/20">
+                    <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Introduction</p>
+                    <p className="text-sm text-foreground/80 leading-relaxed">{introduction}</p>
+                  </div>
+                )}
+                <article
+                  className="prose prose-slate max-w-none prose-headings:font-bold prose-p:text-foreground/80 prose-p:leading-[1.85]"
+                  dangerouslySetInnerHTML={{ __html: contentHtml || "<p><em>No content yet.</em></p>" }}
+                />
+                {requirements && (
+                  <div className="mt-6 p-4 border border-border bg-muted/20">
+                    <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Requirements</p>
+                    <p className="text-sm text-foreground/80 leading-relaxed">{requirements}</p>
+                  </div>
+                )}
+              </div>
+            </div>
           )}
 
         </div>

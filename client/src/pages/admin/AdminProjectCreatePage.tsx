@@ -4,7 +4,6 @@ import { AdminShell } from "@/components/Shell";
 import { AdminGuard } from "@/pages/admin/AdminGuard";
 import { useCreateProject, useProjects } from "@/hooks/use-projects";
 import { useToast } from "@/hooks/use-toast";
-import { isUnauthorizedError } from "@/lib/auth-utils";
 import { CoverImageField } from "@/components/CoverImageField";
 import { MediaGalleryUpload } from "@/components/MediaGalleryUpload";
 import { RichTextEditor } from "@/components/RichTextEditor";
@@ -12,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { TranslationReviewPanel, type TranslationReviewFields } from "@/components/TranslationReviewDialog";
 import { translateContent } from "@/lib/translate";
-import { ArrowLeft, Loader2, Languages, AlertTriangle, FileText, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Loader2, Languages, AlertTriangle, FileText, CheckCircle2, Eye, X } from "lucide-react";
 
 const STEPS = [
   { id: 1, label: "Project Info", desc: "Details & content" },
@@ -80,6 +79,7 @@ export default function AdminProjectCreatePage() {
   const featuredCount = (allProjects.data || []).filter((p) => p.project.isFeatured).length;
 
   const [step, setStep] = useState<Step>(1);
+  const [showPreview, setShowPreview] = useState(false);
 
   // All fields in one step
   const [slug,           setSlug]           = useState("");
@@ -137,28 +137,30 @@ export default function AdminProjectCreatePage() {
   }
 
   async function handleConfirmCreate(allTranslations: Record<"en" | "hi" | "mr", TranslationReviewFields>) {
-    try {
-      await create.mutateAsync({
-        slug: slug.trim(),
-        isFeatured,
-        coverImagePath,
-        galleryImages: galleryImages.length ? galleryImages : undefined,
-        projectDate: projectDate || null,
-        youtubeUrl: youtubeUrl.trim() || null,
-        translations: (["en", "hi", "mr"] as const).map((l) => ({
-          language: l,
-          status:      allTranslations[l].status ?? "published",
-          title:       allTranslations[l].title,
-          summary:     allTranslations[l].summary ?? null,
-          contentHtml: allTranslations[l].contentHtml,
-        })),
-      });
-      toast({ title: "Project created successfully" });
+    const result = await create.mutateAsync({
+      slug: slug.trim(),
+      isFeatured,
+      coverImagePath,
+      galleryImages: galleryImages.length ? galleryImages : undefined,
+      projectDate: projectDate || null,
+      youtubeUrl: youtubeUrl.trim() || null,
+      translations: (["en", "hi", "mr"] as const).map((l) => ({
+        language: l,
+        status:      allTranslations[l].status ?? "published",
+        title:       allTranslations[l].title,
+        summary:     allTranslations[l].summary ?? null,
+        contentHtml: allTranslations[l].contentHtml,
+      })),
+    });
+    const createdId = (result as any)?.project?.id;
+    toast({
+      title: "Project created successfully! ✅",
+      description: allTranslations["en"].title,
+    });
+    if (createdId) {
+      navigate(`/admin/projects/${createdId}`);
+    } else {
       navigate("/admin/projects");
-    } catch (e) {
-      const err = e as Error;
-      if (isUnauthorizedError(err)) { window.location.href = "/admin/login"; return; }
-      throw err;
     }
   }
 
@@ -274,15 +276,25 @@ export default function AdminProjectCreatePage() {
                   <FileText className="h-3.5 w-3.5" />
                   Fill all required fields, then translate
                 </div>
-                <button
-                  onClick={() => void handleTranslate()}
-                  disabled={translating}
-                  className="h-9 px-6 text-xs font-bold uppercase tracking-wider bg-[hsl(var(--kesari))] text-white hover:bg-[hsl(var(--kesari-hover))] transition-all disabled:opacity-50 flex items-center gap-2"
-                >
-                  {translating
-                    ? <><Loader2 className="h-3.5 w-3.5 animate-spin" />Translating…</>
-                    : <><Languages className="h-3.5 w-3.5" />Translate & Review</>}
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => { window.scrollTo({ top: 0 }); setShowPreview(true); }}
+                    disabled={!title.trim()}
+                    className="h-9 px-4 text-xs font-bold uppercase tracking-wider border border-border bg-transparent text-foreground hover:border-foreground transition-all disabled:opacity-40 flex items-center gap-2"
+                  >
+                    <Eye className="h-3.5 w-3.5" /> Preview
+                  </button>
+                  <button
+                    onClick={() => void handleTranslate()}
+                    disabled={translating}
+                    className="h-9 px-6 text-xs font-bold uppercase tracking-wider bg-[hsl(var(--kesari))] text-white hover:bg-[hsl(var(--kesari-hover))] transition-all disabled:opacity-50 flex items-center gap-2"
+                  >
+                    {translating
+                      ? <><Loader2 className="h-3.5 w-3.5 animate-spin" />Translating…</>
+                      : <><Languages className="h-3.5 w-3.5" />Translate & Review</>}
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -295,6 +307,41 @@ export default function AdminProjectCreatePage() {
               onBack={() => setStep(1)}
               onConfirmCreate={handleConfirmCreate}
             />
+          )}
+
+          {/* ══ PREVIEW OVERLAY ══ */}
+          {showPreview && (
+            <div className="fixed inset-0 z-50 bg-background overflow-y-auto">
+              {/* Preview bar */}
+              <div className="sticky top-0 z-10 bg-foreground text-background px-6 h-11 flex items-center justify-between gap-4">
+                <div className="flex items-center gap-2">
+                  <Eye className="h-4 w-4" />
+                  <span className="text-sm font-bold">Preview</span>
+                  <span className="text-xs opacity-50">— this is how the project will look publicly</span>
+                </div>
+                <button
+                  onClick={() => setShowPreview(false)}
+                  className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider opacity-70 hover:opacity-100 transition-opacity"
+                >
+                  <X className="h-4 w-4" /> Close Preview
+                </button>
+              </div>
+              {/* Preview content */}
+              <div className="px-6 sm:px-12 md:px-20 lg:px-32 py-14">
+                <p className="text-xs font-bold uppercase tracking-[0.22em] text-[hsl(var(--kesari))] mb-4">Project</p>
+                <h1 className="text-foreground mb-4" style={{ fontSize: "clamp(2rem,5vw,3.8rem)", fontWeight: 700, lineHeight: 1.06, letterSpacing: "-0.03em" }}>
+                  {title || "Untitled Project"}
+                </h1>
+                {summary && <p className="text-muted-foreground mb-8" style={{ fontSize: "clamp(0.95rem,1.6vw,1.1rem)", maxWidth: "58ch", lineHeight: 1.7 }}>{summary}</p>}
+                {coverImagePath && (
+                  <img src={coverImagePath} alt="Cover" className="w-full max-h-[420px] object-cover mb-10 border border-border" />
+                )}
+                <article
+                  className="prose prose-slate max-w-none prose-headings:font-bold prose-p:text-foreground/80 prose-p:leading-[1.85]"
+                  dangerouslySetInnerHTML={{ __html: contentHtml || "<p><em>No content yet.</em></p>" }}
+                />
+              </div>
+            </div>
           )}
 
         </div>
