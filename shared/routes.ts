@@ -26,7 +26,7 @@ const projectTranslationInput = z.object({
   status: z.enum(["draft", "published"]).optional(),
   title: z.string().min(1),
   summary: z.string().nullable().optional(),
-  contentHtml: z.string().min(1),
+  contentHtml: z.string(),
 });
 
 const eventTranslationInput = z.object({
@@ -37,7 +37,7 @@ const eventTranslationInput = z.object({
   summary: z.string().nullable().optional(),
   introduction: z.string().nullable().optional(),
   requirements: z.string().nullable().optional(),
-  contentHtml: z.string().min(1),
+  contentHtml: z.string(),
 });
 
 export const api = {

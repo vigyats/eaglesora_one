@@ -412,32 +412,32 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
       const input = api.projects.upsertTranslation.input.parse(req.body);
 
-      // Save submitted language + auto-translate to all other languages
-      const translations = await autoTranslateFields(
-        {
-          title: input.title,
-          summary: input.summary,
-          contentHtml: input.contentHtml,
-        },
-        lang as Lang
-      );
-
-      // Save all 3 languages atomically
+      // Save submitted language first — always succeeds even if translation fails
       const updated = await storage.upsertProjectTranslation(id, lang, input);
       if (!updated) return res.status(404).json({ message: "Not found" });
 
-      const otherLangs = (["en", "hi", "mr"] as Lang[]).filter((l) => l !== lang);
-      await Promise.all(
-        otherLangs.map((l) =>
-          storage.upsertProjectTranslation(id, l, {
-            language: l,
-            status: input.status ?? "published",
-            title: translations[l].title,
-            summary: translations[l].summary ?? null,
-            contentHtml: translations[l].contentHtml,
-          })
-        )
-      );
+      // Auto-translate to other languages — non-fatal if translator is down
+      try {
+        const translations = await autoTranslateFields(
+          { title: input.title, summary: input.summary, contentHtml: input.contentHtml },
+          lang as Lang
+        );
+        const otherLangs = (["en", "hi", "mr"] as Lang[]).filter((l) => l !== lang);
+        await Promise.all(
+          otherLangs.map((l) =>
+            storage.upsertProjectTranslation(id, l, {
+              language: l,
+              status: input.status ?? "published",
+              title: translations[l].title,
+              summary: translations[l].summary ?? null,
+              contentHtml: translations[l].contentHtml,
+            })
+          )
+        );
+      } catch (transErr) {
+        console.error("Auto-translate failed (project), skipping:", transErr);
+        // Don't fail the request — the EN save already succeeded
+      }
 
       return res.json(updated);
     } catch (err) {
@@ -556,38 +556,42 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
       const input = api.events.upsertTranslation.input.parse(req.body);
 
-      // Save submitted language + auto-translate to all other languages
-      const translations = await autoTranslateFields(
-        {
-          title: input.title,
-          summary: input.summary,
-          contentHtml: input.contentHtml,
-          location: input.location,
-          introduction: input.introduction,
-          requirements: input.requirements,
-        },
-        lang as Lang
-      );
-
-      // Save all 3 languages atomically
+      // Save submitted language first — always succeeds even if translation fails
       const updated = await storage.upsertEventTranslation(id, lang, input);
       if (!updated) return res.status(404).json({ message: "Not found" });
 
-      const otherLangs = (["en", "hi", "mr"] as Lang[]).filter((l) => l !== lang);
-      await Promise.all(
-        otherLangs.map((l) =>
-          storage.upsertEventTranslation(id, l, {
-            language: l,
-            status: input.status ?? "published",
-            title: translations[l].title,
-            summary: translations[l].summary ?? null,
-            contentHtml: translations[l].contentHtml,
-            location: translations[l].location ?? null,
-            introduction: translations[l].introduction ?? null,
-            requirements: translations[l].requirements ?? null,
-          })
-        )
-      );
+      // Auto-translate to other languages — non-fatal if translator is down
+      try {
+        const translations = await autoTranslateFields(
+          {
+            title: input.title,
+            summary: input.summary,
+            contentHtml: input.contentHtml,
+            location: input.location,
+            introduction: input.introduction,
+            requirements: input.requirements,
+          },
+          lang as Lang
+        );
+        const otherLangs = (["en", "hi", "mr"] as Lang[]).filter((l) => l !== lang);
+        await Promise.all(
+          otherLangs.map((l) =>
+            storage.upsertEventTranslation(id, l, {
+              language: l,
+              status: input.status ?? "published",
+              title: translations[l].title,
+              summary: translations[l].summary ?? null,
+              contentHtml: translations[l].contentHtml,
+              location: translations[l].location ?? null,
+              introduction: translations[l].introduction ?? null,
+              requirements: translations[l].requirements ?? null,
+            })
+          )
+        );
+      } catch (transErr) {
+        console.error("Auto-translate failed (event), skipping:", transErr);
+        // Don't fail the request — the EN save already succeeded
+      }
 
       return res.json(updated);
     } catch (err) {
@@ -864,10 +868,15 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const { url, title } = req.body;
       if (!url || !title) return res.status(400).json({ message: "url and title are required" });
 
-      // Translate title — must succeed before storing
-      const ytTranslations = await autoTranslateFields({ title, contentHtml: "" });
-      const titleHi = ytTranslations.hi.title;
-      const titleMr = ytTranslations.mr.title;
+      let titleHi = title;
+      let titleMr = title;
+      try {
+        const ytTranslations = await autoTranslateFields({ title, contentHtml: "" });
+        titleHi = ytTranslations.hi.title || title;
+        titleMr = ytTranslations.mr.title || title;
+      } catch (transErr) {
+        console.error("Auto-translate failed (youtube), using EN title:", transErr);
+      }
 
       const [row] = await db.insert(youtubeVideos).values({ url, title, titleHi, titleMr }).returning();
       return res.status(201).json(row);
