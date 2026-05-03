@@ -368,27 +368,6 @@ export default function PrayasvanPage() {
               </div>
             </div>
 
-            {/* Constellation Forest */}
-            <div className="overflow-hidden rounded-2xl border border-border bg-card">
-              <div className="grid grid-cols-1 md:grid-cols-2">
-                <img src="/constellationforest.png" alt={p.constellationLabel} className="w-full h-full object-cover" style={{ minHeight: "280px", maxHeight: "420px" }} />
-                <div className="p-8 flex flex-col justify-center gap-5">
-                  <p className="text-sm font-bold text-[hsl(var(--kesari))] whitespace-nowrap">{p.nakshatraVanLabel}</p>
-                  <h2 className="font-bold text-foreground" style={{ fontSize: "clamp(1.5rem,3vw,2.2rem)", lineHeight: 1.08, letterSpacing: "-0.02em" }}>
-                    {p.constellationLabel}
-                  </h2>
-                  <div className="space-y-4">
-                    {(p.constellationLines as string[]).map((line: string, i: number) => (
-                      <div key={i} className="flex items-start gap-3">
-                        <div className="h-2 w-2 rounded-full bg-[hsl(var(--kesari))] mt-1.5 shrink-0" />
-                        <p className="text-base font-bold text-foreground">{line}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-
             {/* Nakshatra Table */}
             <div className="border border-border rounded-2xl overflow-hidden">
               <div className="px-6 py-4 bg-black">

@@ -1,14 +1,15 @@
 import 'dotenv/config'
 import express, { type Request, Response, NextFunction } from "express";
 import session from "express-session";
-import MemoryStore from "memorystore";
+import connectPgSimple from "connect-pg-simple";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
+import { pool } from "./db";
 
 const app = express();
 const httpServer = createServer(app);
-const SessionStore = MemoryStore(session);
+const PgStore = connectPgSimple(session);
 
 declare module "http" {
   interface IncomingMessage {
@@ -22,14 +23,17 @@ app.use(
     secret: process.env.SESSION_SECRET || "tiranga-hub-secret-key-change-in-production",
     resave: false,
     saveUninitialized: false,
-    store: new SessionStore({
-      checkPeriod: 86400000, // prune expired entries every 24h
+    // PostgreSQL-backed session store — survives server restarts and deploys
+    store: new PgStore({
+      pool,
+      tableName: "sessions",
+      createTableIfMissing: false,
     }),
     cookie: {
-      secure: false, // Set to false for development
+      secure: false,
       httpOnly: true,
-      maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
-      sameSite: 'lax',
+      maxAge: 1000 * 60 * 60 * 24 * 30, // 30 days
+      sameSite: "lax",
     },
   })
 );
